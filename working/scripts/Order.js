@@ -2,30 +2,10 @@ import Menu from "./Menu.js";
 
 const Order = {
 	cart: [],
-	openDB: async () => {
-		return await idb.openDB("cm-storage", 1, {
-			async upgrade(db) {
-				await db.createObjectStore("order");
-			},
-		});
-	},
 
-	load: async () => {
-		const db = await Order.openDB();
-		const cartString = await db.get("order", "cart");
-		if (cartString) {
-			try {
-				Order.cart = cartString;
-			} catch (e) {
-				console.error("Data in Storage is corrupted");
-			}
-		}
-		Order.render();
-	},
-
-	save: async () => {
-		const db = await Order.openDB();
-		await db.put("order", Order.cart, "cart");
+	load: () => {},
+	save: () => {
+		localStorage.setItem("some-cart", JSON.stringify(Order.cart));
 	},
 
 	add: async (id) => {
@@ -53,6 +33,41 @@ const Order = {
 		);
 		Order.cart = [];
 		Order.render();
+	},
+
+	importCart: async () => {
+		const [handle] = await window.showOpenFilePicker();
+		const file = await handle.getFile();
+		try {
+			const content = JSON.parse(await file.text());
+			console.log(content);
+			if (content instanceof Array && content.length > 0) {
+				Order.cart = content;
+			} else {
+				alert("File is invalid");
+			}
+			Order.render();
+		} catch (e) {
+			console.log(e);
+			alert("File is invalid");
+		}
+	},
+	
+	exportCart: async () => {
+		const handle = await window.showSaveFilePicker({
+			types: [
+				{
+					description: "JSON Cart File",
+					accept: {
+						"application/json": [".json"],
+					},
+				},
+			],
+		});
+		const file = await handle.getFile();
+		const writable = await handle.createWritable();
+		await writable.write(JSON.stringify(Order.cart));
+		await writable.close();
 	},
 
 	render: () => {
@@ -84,6 +99,7 @@ const Order = {
                 `;
 				total += prodInCart.quantity * prodInCart.product.price;
 			}
+
 			html += `
                         <li>
                             <p class='total'>Total</p>
